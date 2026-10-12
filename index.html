@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diorama Sensori: Padanan Ganda</title>
+    <style>
+        /* Palet warna pastel untuk murid inklusif */
+        body { 
+            background-color: #f0f8ff; /* Biru Alice yang menenangkan */
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif; /* Font mesra kanak-kanak/disleksia */
+            display: flex; flex-direction: column; align-items: center; 
+            margin: 0; padding: 20px; color: #2d3436;
+        }
+        h1 { color: #6c5ce7; text-align: center; font-size: 28px; }
+        p.instruction { font-size: 18px; color: #636e72; margin-bottom: 30px; text-align: center; }
+        
+        .game-board {
+            display: flex; justify-content: center; gap: 40px; width: 100%; max-width: 600px;
+        }
+        .column {
+            display: flex; flex-direction: column; gap: 15px; width: 45%;
+        }
+        .word-btn {
+            background-color: #fff; border: 3px solid #74b9ff; border-radius: 15px;
+            padding: 15px; font-size: 20px; font-weight: bold; color: #0984e3;
+            cursor: pointer; text-align: center; transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); user-select: none;
+        }
+        .word-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(116, 185, 255, 0.3); }
+        
+        /* State Warna */
+        .selected-left { background-color: #ffeaa7; border-color: #fdcb6e; color: #d35400; }
+        .selected-right { background-color: #ffeaa7; border-color: #fdcb6e; color: #d35400; }
+        .correct { background-color: #55efc4 !important; border-color: #00b894 !important; color: #2d3436 !important; transform: scale(1.05); cursor: default; }
+        .wrong-shake { animation: shake 0.4s; background-color: #fab1a0; border-color: #e17055; color: white; }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        #feedback-area {
+            margin-top: 40px; min-height: 80px; text-align: center;
+        }
+        .emoji { font-size: 60px; margin: 0; animation: bounce 1s infinite alternate; display: none; }
+        .feedback-text { font-size: 22px; font-weight: bold; color: #00b894; margin-top: 10px; display: none; }
+
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+    </style>
+</head>
+<body>
+
+    <h1>Diorama Sensori: Kata Ganda</h1>
+    <p class="instruction">Sentuh perkataan biru, kemudian cari pasangannya!</p>
+
+    <div class="game-board">
+        <!-- Ruang Perkataan Pertama -->
+        <div class="column" id="left-col"></div>
+        <!-- Ruang Perkataan Kedua -->
+        <div class="column" id="right-col"></div>
+    </div>
+
+    <div id="feedback-area">
+        <div class="emoji" id="happy-emoji">🌟🎉✨</div>
+        <div class="feedback-text" id="feedback-msg">Bagus! Jawapan Tepat!</div>
+    </div>
+
+    <script>
+        // Data kata ganda yang visual dan mudah dibayangkan
+        const wordPairs = [
+            { id: 1, base: "LAUK", match: "PAUK" },
+            { id: 2, base: "WARNA", match: "WARNI" },
+            { id: 3, base: "MANDI", match: "MANDA" },
+            { id: 4, base: "KUIH", match: "MUIH" }
+        ];
+
+        let selectedLeft = null;
+        let selectedRight = null;
+        let matchedCount = 0;
+
+        const leftCol = document.getElementById('left-col');
+        const rightCol = document.getElementById('right-col');
+        const emoji = document.getElementById('happy-emoji');
+        const feedbackMsg = document.getElementById('feedback-msg');
+
+        // Fungsi rombak (shuffle) supaya kedudukan berbeza setiap kali main
+        function shuffleArray(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function initGame() {
+            let rightWords = [...wordPairs];
+            shuffleArray(rightWords);
+
+            wordPairs.forEach(word => {
+                // Bina butang kiri
+                let btnL = document.createElement('div');
+                btnL.className = 'word-btn';
+                btnL.innerText = word.base;
+                btnL.onclick = () => handleSelectLeft(btnL, word.id);
+                leftCol.appendChild(btnL);
+            });
+
+            rightWords.forEach(word => {
+                // Bina butang kanan
+                let btnR = document.createElement('div');
+                btnR.className = 'word-btn';
+                btnR.innerText = word.match;
+                btnR.onclick = () => handleSelectRight(btnR, word.id);
+                rightCol.appendChild(btnR);
+            });
+        }
+
+        function handleSelectLeft(btn, id) {
+            if (btn.classList.contains('correct')) return;
+            // Buang pilihan sedia ada
+            Array.from(leftCol.children).forEach(el => {
+                if(!el.classList.contains('correct')) el.classList.remove('selected-left')
+            });
+            btn.classList.add('selected-left');
+            selectedLeft = { element: btn, id: id };
+            checkMatch();
+        }
+
+        function handleSelectRight(btn, id) {
+            if (btn.classList.contains('correct')) return;
+            // Buang pilihan sedia ada
+            Array.from(rightCol.children).forEach(el => {
+                if(!el.classList.contains('correct')) el.classList.remove('selected-right')
+            });
+            btn.classList.add('selected-right');
+            selectedRight = { element: btn, id: id };
+            checkMatch();
+        }
+
+        function checkMatch() {
+            if (selectedLeft && selectedRight) {
+                if (selectedLeft.id === selectedRight.id) {
+                    // Berjaya padan!
+                    selectedLeft.element.classList.remove('selected-left');
+                    selectedRight.element.classList.remove('selected-right');
+                    selectedLeft.element.classList.add('correct');
+                    selectedRight.element.classList.add('correct');
+                    
+                    showHappyFeedback();
+                    
+                    selectedLeft = null;
+                    selectedRight = null;
+                    matchedCount++;
+
+                    if(matchedCount === wordPairs.length) {
+                        setTimeout(() => {
+                            feedbackMsg.innerText = "Tahniah! Anda telah siapkan semuanya!";
+                        }, 1500);
+                    }
+                } else {
+                    // Salah padan
+                    let wrongL = selectedLeft.element;
+                    let wrongR = selectedRight.element;
+                    
+                    wrongL.classList.add('wrong-shake');
+                    wrongR.classList.add('wrong-shake');
+                    
+                    setTimeout(() => {
+                        wrongL.classList.remove('wrong-shake', 'selected-left');
+                        wrongR.classList.remove('wrong-shake', 'selected-right');
+                    }, 500);
+
+                    selectedLeft = null;
+                    selectedRight = null;
+                }
+            }
+        }
+
+        function showHappyFeedback() {
+            emoji.style.display = 'block';
+            feedbackMsg.style.display = 'block';
+            setTimeout(() => {
+                if(matchedCount < wordPairs.length) {
+                    emoji.style.display = 'none';
+                    feedbackMsg.style.display = 'none';
+                }
+            }, 1500);
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
